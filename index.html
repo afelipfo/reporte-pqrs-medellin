@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 Reporte Ejecutivo PQRS - Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header .subtitle {
+            color: #7f8c8d;
+            font-size: 1.2em;
+            margin-bottom: 20px;
+        }
+
+        .period {
+            background: linear-gradient(45deg, #3498db, #2ecc71);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 50px;
+            display: inline-block;
+            font-weight: 600;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+        }
+
+        .metric-icon {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .metric-value {
+            font-size: 2.2em;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            color: #7f8c8d;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .success { color: #27ae60; }
+        .warning { color: #f39c12; }
+        .danger { color: #e74c3c; }
+        .info { color: #3498db; }
+        .primary { color: #9b59b6; }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .chart-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #2c3e50;
+            text-align: center;
+        }
+
+        .chart-canvas {
+            max-height: 300px;
+        }
+
+        .alerts-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+
+        .alert-critical {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+            color: white;
+        }
+
+        .alert-important {
+            background: linear-gradient(45deg, #ffa726, #ff9800);
+            color: white;
+        }
+
+        .recommendations-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .recommendation {
+            background: linear-gradient(45deg, #4ecdc4, #44a08d);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .data-tables {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .table-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .table-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #2c3e50;
+            text-align: center;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 12px 8px;
+            text-align: left;
+            border-bottom: 1px solid #ecf0f1;
+        }
+
+        .data-table th {
+            background: #34495e;
+            color: white;
+            font-weight: 600;
+        }
+
+        .data-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .kpi-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .kpi-category {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 5px solid #3498db;
+        }
+
+        .kpi-category h4 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
+        .kpi-item {
+            margin-bottom: 10px;
+            color: #555;
+        }
+
+        .footer {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            margin-top: 30px;
+        }
+
+        .map-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .map-title {
+            font-size: 1.4em;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #2c3e50;
+            text-align: center;
+        }
+
+        #mapaMedellin {
+            height: 500px;
+            width: 100%;
+            border-radius: 10px;
+            border: 2px solid #ecf0f1;
+        }
+
+        .map-legend {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .strengths-weaknesses {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .strengths,
+        .weaknesses {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .strengths {
+            border-left: 5px solid #27ae60;
+        }
+
+        .weaknesses {
+            border-left: 5px solid #e74c3c;
+        }
+
+        .section-title {
+            font-size: 1.4em;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #2c3e50;
+            text-align: center;
+        }
+
+        .item-list {
+            list-style: none;
+        }
+
+        .item-list li {
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+
+        .strength-item {
+            background: linear-gradient(45deg, #2ecc71, #27ae60);
+            color: white;
+        }
+
+        .weakness-item {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .metrics-grid {
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            }
+            
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .strengths-weaknesses {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .animated {
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header animated">
+            <h1>📊 Reporte Ejecutivo PQRS</h1>
+            <p class="subtitle">Análisis Integral de Peticiones, Quejas, Reclamos y Sugerencias</p>
+            <div class="period">📅 Período: 01/07/2024 - 10/06/2025</div>
+        </div>
+
+        <!-- Métricas Principales -->
+        <div class="metrics-grid animated">
+            <div class="metric-card">
+                <span class="metric-icon primary">📊</span>
+                <div class="metric-value primary">892</div>
+                <div class="metric-label">Total Casos</div>
+            </div>
+            <div class="metric-card">
+                <span class="metric-icon success">✅</span>
+                <div class="metric-value success">87.8%</div>
+                <div class="metric-label">Tasa de Resolución</div>
+            </div>
+            <div class="metric-card">
+                <span class="metric-icon warning">⏱️</span>
+                <div class="metric-value warning">28.4</div>
+                <div class="metric-label">Días Promedio</div>
+            </div>
+            <div class="metric-card">
+                <span class="metric-icon danger">📅</span>
+                <div class="metric-value danger">42.0%</div>
+                <div class="metric-label">Tasa de Prórroga</div>
+            </div>
+            <div class="metric-card">
+                <span class="metric-icon info">🔄</span>
+                <div class="metric-value info">88</div>
+                <div class="metric-label">Casos Abiertos</div>
+            </div>
+        </div>
+
+        <!-- Gráficos -->
+        <div class="charts-grid animated">
+            <div class="chart-container">
+                <h3 class="chart-title">📋 Distribución por Estado</h3>
+                <canvas id="estadoChart" class="chart-canvas"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3 class="chart-title">🏘️ Top 10 Sectores</h3>
+                <canvas id="sectoresChart" class="chart-canvas"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3 class="chart-title">🏙️ Top 10 Comunas</h3>
+                <canvas id="comunasChart" class="chart-canvas"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3 class="chart-title">🏢 Análisis por Unidad</h3>
+                <canvas id="unidadesChart" class="chart-canvas"></canvas>
+            </div>
+        </div>
+
+        <!-- Mapa de Medellín -->
+        <div class="map-container animated">
+            <h3 class="map-title">🗺️ Mapa de PQRS por Sectores en Medellín - Unidad de Mantenimiento</h3>
+            <div id="mapaMedellin"></div>
+            <div class="map-legend">
+                <h4 style="margin-bottom: 10px; color: #2c3e50;">📊 Leyenda de Intensidad</h4>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #e74c3c;"></div>
+                    <span><strong>Alto:</strong> >20 casos (El Poblado, San Antonio)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #f39c12;"></div>
+                    <span><strong>Medio:</strong> 10-20 casos (Laureles, Santa Cruz, etc.)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #3498db;"></div>
+                    <span><strong>Bajo:</strong> 5-9 casos</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #2ecc71;"></div>
+                    <span><strong>Muy Bajo:</strong> <5 casos</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tablas de Datos -->
+        <div class="data-tables animated">
+            <div class="table-container">
+                <h3 class="table-title">🏘️ TOP 10 SECTORES</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Sector</th>
+                            <th>Casos</th>
+                            <th>Días Prom.</th>
+                            <th>Prórr. Prom.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>EL POBLADO</td><td>28</td><td>21.4</td><td>6.4</td></tr>
+                        <tr><td>SAN ANTONIO PARTE CENTRAL</td><td>27</td><td>26.1</td><td>11.1</td></tr>
+                        <tr><td>LAURELES</td><td>15</td><td>21.5</td><td>6.5</td></tr>
+                        <tr><td>SANTA CRUZ</td><td>13</td><td>22.5</td><td>7.5</td></tr>
+                        <tr><td>AURES Nº 1</td><td>12</td><td>17.9</td><td>2.9</td></tr>
+                        <tr><td>LA MOTA</td><td>11</td><td>24.5</td><td>9.5</td></tr>
+                        <tr><td>CAMPO VALDES Nº 2</td><td>11</td><td>15.6</td><td>0.6</td></tr>
+                        <tr><td>GUAYABAL</td><td>10</td><td>17.5</td><td>2.5</td></tr>
+                        <tr><td>NO APLICA</td><td>10</td><td>24.0</td><td>9.0</td></tr>
+                        <tr><td>BELEN</td><td>10</td><td>21.5</td><td>7.0</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="table-container">
+                <h3 class="table-title">🏙️ TOP 10 COMUNAS</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Comuna</th>
+                            <th>Casos</th>
+                            <th>Porcentaje</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>14 - EL POBLADO</td><td>111</td><td>12.4%</td></tr>
+                        <tr><td>16 - BELEN</td><td>83</td><td>9.3%</td></tr>
+                        <tr><td>11 - LAURELES</td><td>67</td><td>7.5%</td></tr>
+                        <tr><td>12 - LA AMERICA</td><td>66</td><td>7.4%</td></tr>
+                        <tr><td>3 - MANRIQUE</td><td>56</td><td>6.3%</td></tr>
+                        <tr><td>8 - VILLA HERMOSA</td><td>49</td><td>5.5%</td></tr>
+                        <tr><td>9 - BUENOS AIRES</td><td>49</td><td>5.5%</td></tr>
+                        <tr><td>7 - ROBLEDO</td><td>44</td><td>4.9%</td></tr>
+                        <tr><td>10 - LA CANDELARIA</td><td>38</td><td>4.3%</td></tr>
+                        <tr><td>13 - SAN JAVIER</td><td>38</td><td>4.3%</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Alertas -->
+        <div class="alerts-section animated">
+            <h3 class="section-title">🚨 Alertas del Sistema</h3>
+            <div class="alert alert-critical">
+                🔥 <strong>CRÍTICO:</strong> 1 caso sin respuesta con más de 30 días
+            </div>
+            <div class="alert alert-critical">
+                🔥 <strong>CRÍTICO:</strong> Tasa de prórroga muy alta: 42.0%
+            </div>
+            <div class="alert alert-important">
+                ⚠️ <strong>IMPORTANTE:</strong> Tiempo promedio elevado: 28.4 días
+            </div>
+        </div>
+
+        <!-- Fortalezas y Debilidades -->
+        <div class="strengths-weaknesses animated">
+            <div class="strengths">
+                <h3 class="section-title">🏆 Fortalezas</h3>
+                <ul class="item-list">
+                    <li class="strength-item">✅ Excelente tasa de resolución (87.8%)</li>
+                    <li class="strength-item">🎯 Alto volumen de casos gestionados</li>
+                    <li class="strength-item">📊 Cobertura amplia de sectores (245)</li>
+                </ul>
+            </div>
+            <div class="weaknesses">
+                <h3 class="section-title">⚠️ Áreas de Mejora</h3>
+                <ul class="item-list">
+                    <li class="weakness-item">🔴 Alta tasa de prórrogas (42.0%)</li>
+                    <li class="weakness-item">🔴 Muchos casos pendientes (88)</li>
+                    <li class="weakness-item">🔴 Tiempo promedio elevado (28.4 días)</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Recomendaciones -->
+        <div class="recommendations-section animated">
+            <h3 class="section-title">💡 Recomendaciones Estratégicas</h3>
+            <div class="recommendation">
+                ⚡ Optimizar procesos para reducir tiempos de respuesta
+            </div>
+            <div class="recommendation">
+                📅 Revisar causas de prórrogas y establecer medidas preventivas
+            </div>
+            <div class="recommendation">
+                🔄 Implementar sistema de seguimiento automatizado para casos abiertos
+            </div>
+            <div class="recommendation">
+                📊 Desarrollar dashboard en tiempo real para monitoreo continuo
+            </div>
+            <div class="recommendation">
+                🎯 Establecer metas específicas por unidad y sector
+            </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="kpi-section animated">
+            <h3 class="section-title">📊 Indicadores Clave de Rendimiento</h3>
+            <div class="kpi-grid">
+                <div class="kpi-category">
+                    <h4>🎯 KPIs Operativos</h4>
+                    <div class="kpi-item">📊 Volumen total: 892 casos</div>
+                    <div class="kpi-item">✅ Tasa de resolución: 87.8%</div>
+                    <div class="kpi-item">⏱️ Tiempo promedio gestión: 28.4 días</div>
+                    <div class="kpi-item">📅 Tasa de prórroga: 42.0%</div>
+                </div>
+                <div class="kpi-category">
+                    <h4>🏆 KPIs de Calidad</h4>
+                    <div class="kpi-item">⏰ Cumplimiento ≤15 días: 58.0%</div>
+                    <div class="kpi-item">🔧 Casos con apoyo técnico: 92.6%</div>
+                </div>
+                <div class="kpi-category">
+                    <h4>📍 KPIs de Distribución</h4>
+                    <div class="kpi-item">🏘️ Sectores atendidos: 245</div>
+                    <div class="kpi-item">🏙️ Comunas atendidas: 27</div>
+                    <div class="kpi-item">📝 Tipo principal: Solicitud Interés Particular (72.8%)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer animated">
+            <div class="footer-content">
+                <p><strong>📊 Reporte generado el 12/06/2025 14:18</strong></p>
+                <p>Basado en 892 registros procesados | Sistema de gestión PQRS</p>
+                <p>Para más información, contactar al equipo de análisis de datos</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuración global para Chart.js
+        Chart.defaults.responsive = true;
+        Chart.defaults.maintainAspectRatio = false;
+        Chart.defaults.font.family = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+
+        // Gráfico de Estados
+        const estadoCtx = document.getElementById('estadoChart').getContext('2d');
+        new Chart(estadoCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Cerrados', 'Abiertos', 'En Proceso'],
+                datasets: [{
+                    data: [783, 88, 18],
+                    backgroundColor: ['#27ae60', '#e74c3c', '#f39c12'],
+                    borderWidth: 3,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 20,
+                            font: {
+                                size: 12,
+                                weight: 'bold'
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Gráfico de Sectores (CORREGIDO - Top 10 completo)
+        const sectoresCtx = document.getElementById('sectoresChart').getContext('2d');
+        new Chart(sectoresCtx, {
+            type: 'bar',
+            data: {
+                labels: [
+                    'El Poblado', 
+                    'San Antonio P.C.', 
+                    'Laureles', 
+                    'Santa Cruz', 
+                    'Aures Nº 1',
+                    'La Mota',
+                    'Campo Valdés Nº 2',
+                    'Guayabal',
+                    'No Aplica',
+                    'Belén'
+                ],
+                datasets: [{
+                    label: 'Casos',
+                    data: [28, 27, 15, 13, 12, 11, 11, 10, 10, 10],
+                    backgroundColor: [
+                        '#e74c3c', '#e67e22', '#f39c12', '#f1c40f', '#27ae60',
+                        '#2ecc71', '#16a085', '#3498db', '#2980b9', '#9b59b6'
+                    ],
+                    borderColor: 'rgba(255, 255, 255, 0.8)',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0,0,0,0.1)'
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: 'rgba(0,0,0,0.1)'
+                        },
+                        ticks: {
+                            font: {
+                                size: 10
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Gráfico de Comunas (CORREGIDO - Top 10 completo)
+        const comunasCtx = document.getElementById('comunasChart').getContext('2d');
+        new Chart(comunasCtx, {
+            type: 'bar',
+            data: {
+                labels: [
+                    '14-El Poblado', 
+                    '16-Belén', 
+                    '11-Laureles', 
+                    '12-La América', 
+                    '3-Manrique',
+                    '8-Villa Hermosa',
+                    '9-Buenos Aires',
+                    '7-Robledo',
+                    '10-La Candelaria',
+                    '13-San Javier'
+                ],
+                datasets: [{
+                    label: 'Casos',
+                    data: [111, 83, 67, 66, 56, 49, 49, 44, 38, 38],
+                    backgroundColor: [
+                        '#e74c3c', '#e67e22', '#f39c12', '#f1c40f', '#27ae60',
+                        '#2ecc71', '#16a085', '#3498db', '#2980b9', '#9b59b6'
+                    ],
+                    borderColor: 'rgba(255, 255, 255, 0.8)',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            color: 'rgba(0,0,0,0.1)'
+                        },
+                        ticks: {
+                            maxRotation: 45,
+                            font: {
+                                size: 9
+                            }
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0,0,0,0.1)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Gráfico de Unidades
+        const unidadesCtx = document.getElementById('unidadesChart').getContext('2d');
+        new Chart(unidadesCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Mantenimiento', 'Entes de Control', 'Estudios y Diseños', 'Otros'],
+                datasets: [{
+                    data: [864, 7, 2, 19],
+                    backgroundColor: ['#3498db', '#e67e22', '#9b59b6', '#95a5a6'],
+                    borderWidth: 3,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 20,
+                            font: {
+                                size: 11,
+                                weight: 'bold'
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // MAPA DE MEDELLÍN CON SECTORES (CORREGIDO)
+        function initMap() {
+            try {
+                // Verificar que Leaflet esté disponible
+                if (typeof L === 'undefined') {
+                    console.error('Leaflet no está cargado');
+                    document.getElementById('mapaMedellin').innerHTML = '<div style="padding: 50px; text-align: center; color: #7f8c8d;">⚠️ Cargando mapa... Si no aparece, verifique la conexión a internet</div>';
+                    return;
+                }
+
+                // Coordenadas del centro de Medellín
+                const medellinCenter = [6.2442, -75.5812];
+                
+                // Crear el mapa
+                const map = L.map('mapaMedellin').setView(medellinCenter, 11);
+                
+                // Agregar tiles (capa base del mapa)
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors | Unidad de Mantenimiento',
+                    maxZoom: 18
+                }).addTo(map);
+
+                // Datos de sectores con coordenadas aproximadas y casos
+                const sectoresData = [
+                    { nombre: 'EL POBLADO', lat: 6.2077, lng: -75.5669, casos: 28, comuna: '14 - El Poblado' },
+                    { nombre: 'SAN ANTONIO PARTE CENTRAL', lat: 6.1951, lng: -75.6397, casos: 27, comuna: 'Corregimiento San Antonio de Prado' },
+                    { nombre: 'LAURELES', lat: 6.2518, lng: -75.5906, casos: 15, comuna: '11 - Laureles' },
+                    { nombre: 'SANTA CRUZ', lat: 6.2889, lng: -75.5494, casos: 13, comuna: '3 - Manrique' },
+                    { nombre: 'AURES Nº 1', lat: 6.2742, lng: -75.5369, casos: 12, comuna: '3 - Manrique' },
+                    { nombre: 'LA MOTA', lat: 6.2156, lng: -75.6078, casos: 11, comuna: '12 - La América' },
+                    { nombre: 'CAMPO VALDES Nº 2', lat: 6.2889, lng: -75.5494, casos: 11, comuna: '4 - Aranjuez' },
+                    { nombre: 'GUAYABAL', lat: 6.2300, lng: -75.5800, casos: 10, comuna: '15 - Guayabal' },
+                    { nombre: 'BELEN', lat: 6.2300, lng: -75.6200, casos: 10, comuna: '16 - Belén' },
+                    { nombre: 'LA CANDELARIA', lat: 6.2518, lng: -75.5743, casos: 8, comuna: '10 - La Candelaria' },
+                    { nombre: 'ROBLEDO', lat: 6.2800, lng: -75.6200, casos: 7, comuna: '7 - Robledo' },
+                    { nombre: 'VILLA HERMOSA', lat: 6.2600, lng: -75.5400, casos: 6, comuna: '8 - Villa Hermosa' },
+                    { nombre: 'BUENOS AIRES', lat: 6.2400, lng: -75.5600, casos: 5, comuna: '9 - Buenos Aires' },
+                    { nombre: 'SAN JAVIER', lat: 6.2200, lng: -75.6400, casos: 4, comuna: '13 - San Javier' }
+                ];
+
+                // Función para determinar color según número de casos
+                function getColor(casos) {
+                    if (casos > 20) return '#e74c3c';      // Rojo - Alto
+                    if (casos >= 10) return '#f39c12';     // Naranja - Medio
+                    if (casos >= 5) return '#3498db';      // Azul - Bajo
+                    return '#2ecc71';                      // Verde - Muy bajo
+                }
+
+                // Función para determinar tamaño del marcador
+                function getSize(casos) {
+                    if (casos > 20) return 15;
+                    if (casos >= 10) return 12;
+                    if (casos >= 5) return 9;
+                    return 6;
+                }
+
+                // Agregar marcadores para cada sector
+                sectoresData.forEach(sector => {
+                    const marker = L.circleMarker([sector.lat, sector.lng], {
+                        radius: getSize(sector.casos),
+                        fillColor: getColor(sector.casos),
+                        color: '#fff',
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(map);
+
+                    // Popup con información del sector
+                    const popupContent = `
+                        <div style="text-align: center; font-family: Arial, sans-serif; min-width: 200px;">
+                            <h4 style="margin: 0 0 10px 0; color: #2c3e50; font-size: 14px;">${sector.nombre}</h4>
+                            <p style="margin: 5px 0; color: #7f8c8d; font-size: 12px;"><strong>Comuna:</strong> ${sector.comuna}</p>
+                            <p style="margin: 5px 0; color: #e74c3c; font-size: 16px; font-weight: bold;">
+                                📊 ${sector.casos} casos PQRS
+                            </p>
+                            <div style="margin-top: 10px; padding: 5px; background: ${getColor(sector.casos)}; color: white; border-radius: 5px; font-size: 11px; font-weight: bold;">
+                                ${sector.casos > 20 ? 'ALTA DEMANDA' : 
+                                  sector.casos >= 10 ? 'DEMANDA MEDIA' : 
+                                  sector.casos >= 5 ? 'DEMANDA BAJA' : 'DEMANDA MUY BAJA'}
+                            </div>
+                            <p style="margin: 5px 0; color: #7f8c8d; font-size: 10px;">Unidad de Mantenimiento</p>
+                        </div>
+                    `;
+
+                    marker.bindPopup(popupContent);
+
+                    // Efecto hover
+                    marker.on('mouseover', function() {
+                        this.openPopup();
+                        this.setStyle({
+                            radius: getSize(sector.casos) + 3,
+                            weight: 3
+                        });
+                    });
+
+                    marker.on('mouseout', function() {
+                        this.setStyle({
+                            radius: getSize(sector.casos),
+                            weight: 2
+                        });
+                    });
+                });
+
+                // Mensaje de éxito en consola
+                console.log('Mapa de Medellín cargado exitosamente con', sectoresData.length, 'sectores');
+                
+                // Opcional: Ajustar vista para mostrar todos los marcadores
+                const group = new L.featureGroup(
+                    sectoresData.map(sector => 
+                        L.circleMarker([sector.lat, sector.lng])
+                    )
+                );
+                
+                // Ajustar zoom para mostrar todos los puntos
+                map.fitBounds(group.getBounds().pad(0.1));
+
+            } catch (error) {
+                console.error('Error al inicializar el mapa:', error);
+                document.getElementById('mapaMedellin').innerHTML = `
+                    <div style="padding: 50px; text-align: center; color: #e74c3c; background: #f8f9fa; border-radius: 10px;">
+                        <h4>⚠️ Error al cargar el mapa</h4>
+                        <p>Verifique su conexión a internet e intente recargar la página</p>
+                        <button onclick="initMap()" style="padding: 10px 20px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                            🔄 Reintentar
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        // Inicializar el mapa cuando se carga la página
+        document.addEventListener('DOMContentLoaded', function() {
+            // Esperar un poco más para que Leaflet se cargue completamente
+            setTimeout(() => {
+                console.log('Iniciando carga del mapa...');
+                initMap();
+            }, 2000);
+            
+            const elements = document.querySelectorAll('.animated');
+            elements.forEach((el, index) => {
+                setTimeout(() => {
+                    el.style.animation = `fadeInUp 0.6s ease-out ${index * 0.1}s both`;
+                }, index * 100);
+            });
+        });
+    </script>
+</body>
+</html>
